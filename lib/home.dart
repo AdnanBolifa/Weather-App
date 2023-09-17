@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:weather_app/secrets.dart';
 
 import 'forecast.dart';
@@ -14,19 +16,29 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
+  double temp = 0;
   @override
   void initState() {
     super.initState();
     getCurrentWeather();
   }
 
-  Future getCurrentWeather() async {
-    String cityName = 'London';
-    final res = await http.get(
-      Uri.parse(
-          'https://api.openweathermap.org/data/2.5/forecast?q=$cityName,uk&APPID=$openWeatherAPIKey'),
-    );
-    debugPrint(res.body);
+  Future<Map<String, dynamic>> getCurrentWeather() async {
+    String cityName = 'Misratah';
+    String country = 'ly';
+    try {
+      final res = await http.get(
+        Uri.parse(
+            'https://api.openweathermap.org/data/2.5/forecast?q=$cityName,$country&APPID=$openWeatherAPIKey'),
+      );
+      final data = jsonDecode(res.body);
+      if (data['cod'] != '200') {
+        throw data['message'] + ". code: " + data['code'].toString();
+      }
+      return data;
+    } catch (e) {
+      throw e.toString();
+    }
   }
 
   @override
@@ -42,120 +54,151 @@ class _WeatherScreenState extends State<WeatherScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              // Add your search functionality here
+              setState(() {});
             },
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            //main card
-            SizedBox(
-              width: double.infinity,
-              child: Card(
-                elevation: 10,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            "300° F",
-                            style: TextStyle(
-                                fontSize: 32, fontWeight: FontWeight.bold),
+      body: FutureBuilder(
+        future: getCurrentWeather(),
+        builder: (context, snapshot) {
+          debugPrint('snapshot $snapshot');
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator.adaptive());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text(snapshot.error.toString()));
+          }
+
+          final data = snapshot.data!;
+          final currentWeatherData = data['list'][0];
+
+          final currentTemp = currentWeatherData['main']['temp'] - 272.15;
+          final currentSky = currentWeatherData['weather'][0]['main'];
+          final currectHumidity = currentWeatherData['main']['humidity'];
+          final currectWindSpeed = currentWeatherData['wind']['speed'];
+          final currectPressure = currentWeatherData['main']['pressure'];
+
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                //main card
+                SizedBox(
+                  width: double.infinity,
+                  child: Card(
+                    elevation: 10,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              Text(
+                                '${currentTemp.toStringAsFixed(2)}° C',
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Icon(
+                                  currentSky == 'Clouds' || currentSky == 'Rain'
+                                      ? Icons.cloud
+                                      : Icons.sunny,
+                                  size: 64),
+                              const SizedBox(height: 16),
+                              Text(
+                                currentSky,
+                                style: const TextStyle(fontSize: 20),
+                              )
+                            ],
                           ),
-                          SizedBox(height: 16),
-                          Icon(Icons.cloud, size: 64),
-                          SizedBox(height: 16),
-                          Text(
-                            "Rain",
-                            style: TextStyle(fontSize: 20),
-                          )
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(
-              height: 20,
-            ),
-            const Text(
-              "Weather forecast",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
-            ),
-            const SizedBox(
-              height: 8,
-            ),
-
-            //forecast cards
-            const SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  HourlyForecastItem(
-                      time: '03:32', icon: Icons.cloud, value: '300°F'),
-                  HourlyForecastItem(
-                      time: '03:32', icon: Icons.cloud, value: '300°F'),
-                  HourlyForecastItem(
-                      time: '03:32', icon: Icons.cloud, value: '300°F'),
-                  HourlyForecastItem(
-                      time: '03:32', icon: Icons.cloud, value: '300°F'),
-                  HourlyForecastItem(
-                      time: '03:32', icon: Icons.cloud, value: '300°F'),
-                ],
-              ),
-            ),
-
-            const SizedBox(
-              height: 20,
-            ),
-
-            //Additional info
-            const Text(
-              "Additional information",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                AdditionalInfoItem(
-                  icon: Icons.water_drop,
-                  lable: "Humidity",
-                  value: '81',
+                const SizedBox(
+                  height: 20,
                 ),
-                AdditionalInfoItem(
-                  icon: Icons.air,
-                  lable: "Wind Speed",
-                  value: '7.67',
+                const Text(
+                  "Hourly forecast",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
                 ),
-                AdditionalInfoItem(
-                  icon: Icons.beach_access,
-                  lable: "Pressure",
-                  value: '1006',
+                const SizedBox(
+                  height: 8,
                 ),
+                //forecast cards
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: 5,
+                    itemBuilder: (context, index) {
+                      final hourlyForecast = data['list'][index + 1];
+                      final time = DateTime.parse(hourlyForecast['dt_txt']);
+                      return HourlyForecastItem(
+                        time: DateFormat.j().format(time),
+                        icon:
+                            hourlyForecast['weather'][0]['main'] == 'Clouds' ||
+                                    currentSky == 'Rain'
+                                ? Icons.cloud
+                                : Icons.sunny,
+                        value:
+                            '${(hourlyForecast['main']['temp'] - 272.15).toStringAsFixed(2)}°C',
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 20,
+                ),
+
+                //Additional info
+                const Text(
+                  "Additional information",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    AdditionalInfoItem(
+                      icon: Icons.water_drop,
+                      lable: "Humidity",
+                      value: currectHumidity.toString(),
+                    ),
+                    AdditionalInfoItem(
+                      icon: Icons.air,
+                      lable: "Wind Speed",
+                      value: currectWindSpeed.toString(),
+                    ),
+                    AdditionalInfoItem(
+                      icon: Icons.beach_access,
+                      lable: "Pressure",
+                      value: currectPressure.toString(),
+                    ),
+                  ],
+                )
               ],
-            )
-          ],
-        ),
+            ),
+          );
+        },
       ),
     );
   }
