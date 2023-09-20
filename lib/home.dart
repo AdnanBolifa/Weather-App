@@ -15,12 +15,13 @@ class WeatherScreen extends StatefulWidget {
   State<WeatherScreen> createState() => _WeatherScreenState();
 }
 
+String cityName = 'Misratah';
+String country = 'ly';
+
 class _WeatherScreenState extends State<WeatherScreen> {
   late Future<Map<String, dynamic>> weather;
 
   Future<Map<String, dynamic>> getCurrentWeather() async {
-    String cityName = 'Misratah';
-    String country = 'ly';
     try {
       final res = await http.get(
         Uri.parse(
@@ -51,6 +52,36 @@ class _WeatherScreenState extends State<WeatherScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        leading: PopupMenuButton<String>(
+          icon: const Icon(Icons.location_on_outlined),
+          onSelected: (value) {
+            if (value == 'London') {
+              country = 'uk';
+            } else {
+              country = 'ly';
+            }
+            cityName = value;
+            setState(() {
+              weather = getCurrentWeather();
+            });
+          },
+          itemBuilder: (BuildContext context) {
+            return [
+              const PopupMenuItem(
+                value: 'Misratah',
+                child: Text('Misratah (LY)'),
+              ),
+              const PopupMenuItem(
+                value: 'Tripoli',
+                child: Text('Tripoli (LY)'),
+              ),
+              const PopupMenuItem(
+                value: 'London',
+                child: Text('London (UK)'),
+              ),
+            ];
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -87,6 +118,16 @@ class _WeatherScreenState extends State<WeatherScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Text(
+                    //city name
+                    cityName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
                 //main card
                 SizedBox(
                   width: double.infinity,
@@ -104,13 +145,14 @@ class _WeatherScreenState extends State<WeatherScreen> {
                           child: Column(
                             children: [
                               Text(
+                                //Temp
                                 '${currentTemp.toStringAsFixed(2)}° C',
                                 style: const TextStyle(
                                   fontSize: 32,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 2),
                               Icon(
                                   currentSky == 'Clouds' || currentSky == 'Rain'
                                       ? Icons.cloud
